@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>ろかぷー写真認識アプリ ‐ ArcFace (512D) 版</title>
+  <title>写真認識アプリ ‐ ArcFace (512D)</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; background: #f7f7f7; }
     h2 { margin-top: 24px; }
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h2>ろかぷー写真認識アプリ <small>(ArcFace 512D)</small></h2>
+  <h2>写真認識アプリ <small>(ArcFace 512D)</small></h2>
   <div id="controls">
     <input type="file" id="photoUpload" accept="image/*" />
     <input type="text" id="nameInput" placeholder="名前を入力" />
@@ -29,15 +29,15 @@
   </div>
   <div id="status">モデル読込中…</div>
 
-  <!-- Face-API (ArcFace 512D) -->
+  <!-- Face‑API (tinyFaceDetector + ArcFace) -->
   <script type="module">
-    // face-api.js の ArcFace モデル (512次元) を読み込む
     import * as faceapi from 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.esm.js';
 
-    // ★ URL の末尾に /arcface を追加するだけで 512D モデルに切替
-    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/arcface';
+    // 検出器・ランドマークは従来パス、512D 認識モデルだけ ArcFace 用パス
+    const BASE_URL   = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+    const ARC_URL    = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/arcface';
 
-    // HTML 要素を取得
+    // HTML 要素
     const video     = document.getElementById('video');
     const overlay   = document.getElementById('overlay');
     const ctx       = overlay.getContext('2d');
@@ -47,18 +47,20 @@
     const regBtn    = document.getElementById('registerBtn');
     const startBtn  = document.getElementById('startBtn');
 
-    let labeledDescriptor = null; // 登録済みデータ (512次元 ×1)
+    let labeledDescriptor = null; // 登録済み 512D ベクトル
 
-    /** モデル読み込み */
+    /** 1. モデル読込 */
     async function loadModels() {
       statusEl.textContent = 'モデル読込中…';
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL); // ←ArcFace 512D
+      // 顔検出 & ランドマーク
+      await faceapi.nets.tinyFaceDetector.loadFromUri(BASE_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(BASE_URL);
+      // 512D 認識モデル
+      await faceapi.nets.faceRecognitionNet.loadFromUri(ARC_URL);
       statusEl.textContent = '写真と名前を登録してください';
     }
 
-    /** 写真＋名前 登録 */
+    /** 2. 写真＋名前を登録 */
     regBtn.addEventListener('click', async () => {
       const file  = photoInput.files[0];
       const label = nameInput.value.trim();
@@ -80,7 +82,7 @@
       startBtn.disabled = false;
     });
 
-    /** カメラ開始 */
+    /** 3. カメラ開始 */
     startBtn.addEventListener('click', async () => {
       if (!labeledDescriptor) {
         alert('先に写真と名前を登録してください');
@@ -96,11 +98,10 @@
       };
     });
 
-    /** 認識ループ */
+    /** 4. 認識ループ */
     async function runRecognition() {
       statusEl.textContent = '認識待機中…';
-      // ArcFace(512D) は距離が少し大きめなので 0.60 に設定
-      const matcher = new faceapi.FaceMatcher([labeledDescriptor], 0.60);
+      const matcher = new faceapi.FaceMatcher([labeledDescriptor], 0.60); // 512D 用しきい値
       const displaySize = { width: video.width, height: video.height };
       faceapi.matchDimensions(overlay, displaySize);
 
@@ -123,7 +124,7 @@
       }, 200);
     }
 
-    // 起動時にモデル読込
+    // ページ読み込み時にモデル読込
     loadModels();
   </script>
 </body>
