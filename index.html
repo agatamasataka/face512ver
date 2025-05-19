@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>写真認識アプリ ‐ ArcFace (512D)</title>
+  <title>ArcFace 512D 顔認識デモ</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; background: #f7f7f7; }
     h2 { margin-top: 24px; }
@@ -15,76 +15,99 @@
   </style>
 </head>
 <body>
-  <h2>写真認識アプリ <small>(ArcFace 512D)</small></h2>
+  <h2>ArcFace 512D 顔認識デモ</h2>
   <div id="controls">
     <input type="file" id="photoUpload" accept="image/*" />
     <input type="text" id="nameInput" placeholder="名前を入力" />
     <button id="registerBtn">登録</button>
     <button id="startBtn" disabled>カメラ開始</button>
   </div>
-
   <div id="container">
     <video id="video" width="640" height="480" autoplay muted></video>
     <canvas id="overlay" width="640" height="480"></canvas>
   </div>
   <div id="status">モデル読込中…</div>
-
-  <!-- Face‑API (tinyFaceDetector + ArcFace) -->
+  <!-- 必要ライブラリ -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <script type="module">
-    import * as faceapi from 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.esm.js';
-
-    // 検出器・ランドマークは従来パス、512D 認識モデルだけ ArcFace 用パス
-    const BASE_URL   = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-    const ARC_URL    = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/arcface';
-
-    // HTML 要素
-    const video     = document.getElementById('video');
-    const overlay   = document.getElementById('overlay');
-    const ctx       = overlay.getContext('2d');
-    const statusEl  = document.getElementById('status');
-    const photoInput= document.getElementById('photoUpload');
+    // 1. モデルのパス
+    const ARC_ONNX_URL = "./model/arcface.onnx"; // リポジトリのmodel/arcface.onnxに置く
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const ctx = overlay.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const photoInput = document.getElementById('photoUpload');
     const nameInput = document.getElementById('nameInput');
-    const regBtn    = document.getElementById('registerBtn');
-    const startBtn  = document.getElementById('startBtn');
+    const regBtn = document.getElementById('registerBtn');
+    const startBtn = document.getElementById('startBtn');
+    let labeledName = null;
+    let referenceVec = null;
+    let session = null;
 
-    let labeledDescriptor = null; // 登録済み 512D ベクトル
-
-    /** 1. モデル読込 */
+    // 2. モデル読み込み
     async function loadModels() {
-      statusEl.textContent = 'モデル読込中…';
-      // 顔検出 & ランドマーク
-      await faceapi.nets.tinyFaceDetector.loadFromUri(BASE_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(BASE_URL);
-      // 512D 認識モデル
-      await faceapi.nets.faceRecognitionNet.loadFromUri(ARC_URL);
+      statusEl.textContent = 'モデル読込中…(顔検出)';
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
+      statusEl.textContent = 'ArcFace モデル読込中…';
+      session = await ort.InferenceSession.create(ARC_ONNX_URL);
       statusEl.textContent = '写真と名前を登録してください';
     }
 
-    /** 2. 写真＋名前を登録 */
+    // 3. ArcFace埋め込み計算
+    async function getArcFaceVec(image) {
+      // 1. 顔検出＋切り抜き（face-apiでやる）
+      const det = await faceapi.detectSingleFace(image, new faceapi.TinyFaceDetectorOptions());
+      if (!det) return null;
+      // 2. 顔部分だけ112x112にリサイズ
+      const box = det.box;
+      const faceCanvas = document.createElement('canvas');
+      faceCanvas.width = 112; faceCanvas.height = 112;
+      const fctx = faceCanvas.getContext('2d');
+      fctx.drawImage(image, box.x, box.y, box.width, box.height, 0, 0, 112, 112);
+      // 3. float32配列へ変換
+      const imgData = fctx.getImageData(0, 0, 112, 112).data;
+      let input = new Float32Array(1 * 3 * 112 * 112);
+      for (let y = 0; y < 112; y++) {
+        for (let x = 0; x < 112; x++) {
+          for (let c = 0; c < 3; c++) {
+            input[y * 112 * 3 + x * 3 + c] = imgData[(y * 112 + x) * 4 + c] / 255.0;
+          }
+        }
+      }
+      // 4. ONNXモデル推論
+      const tensor = new ort.Tensor("float32", input, [1, 3, 112, 112]);
+      const outputs = await session.run({ data: tensor });
+      let emb = outputs['fc1'] || Object.values(outputs)[0]; // モデルにより名前違う場合あり
+      // 5. 正規化（単位ベクトル化）
+      const norm = Math.sqrt(emb.data.reduce((s,v) => s+v*v, 0));
+      const vec = emb.data.map(v => v/norm);
+      return vec;
+    }
+
+    // 4. 登録ボタン
     regBtn.addEventListener('click', async () => {
-      const file  = photoInput.files[0];
+      const file = photoInput.files[0];
       const label = nameInput.value.trim();
       if (!file || !label) {
         alert('写真と名前の両方を入力してください');
         return;
       }
       const img = await faceapi.bufferToImage(file);
-      const result = await faceapi
-        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-      if (!result) {
+      const vec = await getArcFaceVec(img);
+      if (!vec) {
         statusEl.textContent = '顔が検出できません。別の写真でお試しください';
         return;
       }
-      labeledDescriptor = new faceapi.LabeledFaceDescriptors(label, [result.descriptor]);
+      labeledName = label;
+      referenceVec = vec;
       statusEl.textContent = `「${label}」を登録しました。カメラを開始できます`;
       startBtn.disabled = false;
     });
 
-    /** 3. カメラ開始 */
+    // 5. カメラ開始
     startBtn.addEventListener('click', async () => {
-      if (!labeledDescriptor) {
+      if (!referenceVec) {
         alert('先に写真と名前を登録してください');
         return;
       }
@@ -98,33 +121,51 @@
       };
     });
 
-    /** 4. 認識ループ */
+    // 6. コサイン類似度
+    function cosineSim(a, b) {
+      let s = 0;
+      for(let i=0;i<a.length;i++) s += a[i]*b[i];
+      return s;
+    }
+
+    // 7. 認識ループ
     async function runRecognition() {
       statusEl.textContent = '認識待機中…';
-      const matcher = new faceapi.FaceMatcher([labeledDescriptor], 0.60); // 512D 用しきい値
       const displaySize = { width: video.width, height: video.height };
       faceapi.matchDimensions(overlay, displaySize);
 
       setInterval(async () => {
-        const detections = await faceapi
-          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks()
-          .withFaceDescriptors();
-
-        const resized = faceapi.resizeResults(detections, displaySize);
+        const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
         ctx.clearRect(0, 0, overlay.width, overlay.height);
-
-        resized.forEach((d) => {
-          const best  = matcher.findBestMatch(d.descriptor);
-          const box   = d.detection.box;
-          const label = best.label !== 'unknown' && best.distance < 0.60 ? best.label : 'Unknown';
-          const drawBox = new faceapi.draw.DrawBox(box, { label });
-          drawBox.draw(overlay);
-        });
-      }, 200);
+        if (det) {
+          // 顔部分だけ切り抜き＋112x112にリサイズ
+          const box = det.box;
+          const faceCanvas = document.createElement('canvas');
+          faceCanvas.width = 112; faceCanvas.height = 112;
+          faceCanvas.getContext('2d').drawImage(video, box.x, box.y, box.width, box.height, 0, 0, 112, 112);
+          // ベクトル計算
+          const img = new window.Image();
+          img.src = faceCanvas.toDataURL();
+          img.onload = async () => {
+            const vec = await getArcFaceVec(img);
+            if (!vec) return;
+            // 類似度判定
+            const sim = cosineSim(referenceVec, vec);
+            const threshold = 0.4; // ArcFaceはコサイン類似度 0.3〜0.5程度を目安
+            let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
+            // 枠表示
+            ctx.strokeStyle = (label === 'Unknown') ? 'red' : 'limegreen';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(box.x, box.y, box.width, box.height);
+            ctx.font = '20px sans-serif';
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
+          }
+        }
+      }, 400); // 0.4秒ごと
     }
 
-    // ページ読み込み時にモデル読込
+    // 起動
     loadModels();
   </script>
 </body>
