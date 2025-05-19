@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>ArcFace 512D ろかぷー顔認識デモ</title>
+  <title>ArcFace 512D ろかぷー1顔認識デモ</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; background: #f7f7f7; }
     h2 { margin-top: 24px; }
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h2>ArcFace 512D ろかぷー顔認識デモ</h2>
+  <h2>ArcFace 512D ろかぷー1顔認識デモ</h2>
   <div id="controls">
     <input type="file" id="photoUpload" accept="image/*" />
     <input type="text" id="nameInput" placeholder="名前を入力" />
@@ -78,7 +78,7 @@
       // 4. ONNXモデル推論
       const tensor = new ort.Tensor("float32", input, [1, 3, 112, 112]);
       const outputs = await session.run({ data: tensor });
-      let emb = outputs['embedding'] || Object.values(outputs)[0]; // モデルにより名前違う場合あり
+      let emb = outputs['fc1'] || outputs['embedding'] || Object.values(outputs)[0]; // モデルにより名前違う場合あり
       // 5. 正規化（単位ベクトル化）
       const norm = Math.sqrt(emb.data.reduce((s,v) => s+v*v, 0));
       const vec = emb.data.map(v => v/norm);
