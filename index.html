@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ろかぷー写真認識アプリ ‐ ArcFace (512D) 版</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 0; background: #f7f7f7; }
+    h2 { margin-top: 24px; }
+    #controls { margin: 20px 0; }
+    input, button { padding: 6px 10px; margin: 4px; }
+    #video { border: 1px solid #333; }
+    #overlay { position: absolute; top: 0; left: 0; }
+    #container { position: relative; display: inline-block; }
+    #status { margin-top: 12px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <h2>ろかぷー写真認識アプリ <small>(ArcFace 512D)</small></h2>
+  <div id="controls">
+    <input type="file" id="photoUpload" accept="image/*" />
+    <input type="text" id="nameInput" placeholder="名前を入力" />
+    <button id="registerBtn">登録</button>
+    <button id="startBtn" disabled>カメラ開始</button>
+  </div>
+
+  <div id="container">
+    <video id="video" width="640" height="480" autoplay muted></video>
+    <canvas id="overlay" width="640" height="480"></canvas>
+  </div>
+  <div id="status">モデル読込中…</div>
+
+  <!-- Face-API (ArcFace 512D) -->
+  <script type="module">
+    // face-api.js の ArcFace モデル (512次元) を読み込む
+    import * as faceapi from 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.esm.js';
+
+    // ★ URL の末尾に /arcface を追加するだけで 512D モデルに切替
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/arcface';
+
+    // HTML 要素を取得
+    const video     = document.getElementById('video');
+    const overlay   = document.getElementById('overlay');
+    const ctx       = overlay.getContext('2d');
+    const statusEl  = document.getElementById('status');
+    const photoInput= document.getElementById('photoUpload');
+    const nameInput = document.getElementById('nameInput');
+    const regBtn    = document.getElementById('registerBtn');
+    const startBtn  = document.getElementById('startBtn');
+
+    let labeledDescriptor = null; // 登録済みデータ (512次元 ×1)
+
+    /** モデル読み込み */
+    async function loadModels() {
+      statusEl.textContent = 'モデル読込中…';
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL); // ←ArcFace 512D
+      statusEl.textContent = '写真と名前を登録してください';
+    }
+
+    /** 写真＋名前 登録 */
+    regBtn.addEventListener('click', async () => {
+      const file  = photoInput.files[0];
+      const label = nameInput.value.trim();
+      if (!file || !label) {
+        alert('写真と名前の両方を入力してください');
+        return;
+      }
+      const img = await faceapi.bufferToImage(file);
+      const result = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      if (!result) {
+        statusEl.textContent = '顔が検出できません。別の写真でお試しください';
+        return;
+      }
+      labeledDescriptor = new faceapi.LabeledFaceDescriptors(label, [result.descriptor]);
+      statusEl.textContent = `「${label}」を登録しました。カメラを開始できます`;
+      startBtn.disabled = false;
+    });
+
+    /** カメラ開始 */
+    startBtn.addEventListener('click', async () => {
+      if (!labeledDescriptor) {
+        alert('先に写真と名前を登録してください');
+        return;
+      }
+      startBtn.disabled = true;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      video.srcObject = stream;
+      statusEl.textContent = 'カメラ起動中…';
+      video.onloadedmetadata = () => {
+        video.play();
+        runRecognition();
+      };
+    });
+
+    /** 認識ループ */
+    async function runRecognition() {
+      statusEl.textContent = '認識待機中…';
+      // ArcFace(512D) は距離が少し大きめなので 0.60 に設定
+      const matcher = new faceapi.FaceMatcher([labeledDescriptor], 0.60);
+      const displaySize = { width: video.width, height: video.height };
+      faceapi.matchDimensions(overlay, displaySize);
+
+      setInterval(async () => {
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+
+        const resized = faceapi.resizeResults(detections, displaySize);
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+        resized.forEach((d) => {
+          const best  = matcher.findBestMatch(d.descriptor);
+          const box   = d.detection.box;
+          const label = best.label !== 'unknown' && best.distance < 0.60 ? best.label : 'Unknown';
+          const drawBox = new faceapi.draw.DrawBox(box, { label });
+          drawBox.draw(overlay);
+        });
+      }, 200);
+    }
+
+    // 起動時にモデル読込
+    loadModels();
+  </script>
+</body>
+</html>
