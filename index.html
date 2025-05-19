@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>ArcFace 512D 顔認識デモ</title>
+  <title>ArcFace 512D ろかぷー顔認識デモ</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; background: #f7f7f7; }
     h2 { margin-top: 24px; }
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h2>ArcFace 512D 顔認識デモ</h2>
+  <h2>ArcFace 512D ろかぷー顔認識デモ</h2>
   <div id="controls">
     <input type="file" id="photoUpload" accept="image/*" />
     <input type="text" id="nameInput" placeholder="名前を入力" />
@@ -32,7 +32,7 @@
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <script type="module">
     // 1. モデルのパス
-    const ARC_ONNX_URL = "./model/arcface.onnx"; // リポジトリのmodel/arcface.onnxに置く
+    const ARC_ONNX_URL = "./w600k_mbf.onnx"; // リポジトリのmodel/arcface.onnxに置く
     const video = document.getElementById('video');
     const overlay = document.getElementById('overlay');
     const ctx = overlay.getContext('2d');
