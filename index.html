@@ -60,6 +60,7 @@
     async function loadModels() {
       statusEl.textContent = '128D・顔検出モデル読込中…';
       await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
+await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
       await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
       statusEl.textContent = '512D ArcFaceモデル読込中…';
       session512 = await ort.InferenceSession.create(ARC_ONNX_URL);
