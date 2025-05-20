@@ -432,6 +432,8 @@
           const threshold = 0.4;
           let isOk = (sim > (1-threshold));
           let label = isOk ? labeledName : 'Unknown';
+  // ★ここに追加！
+  console.log("128D類似度:", sim, "ラベル:", label);
           ctx128.strokeStyle = isOk ? '#33b9bb' : '#E94560';
           ctx128.lineWidth = 3;
           const box = det128.detection.box;
@@ -476,6 +478,8 @@
           const threshold = 0.5;
           let isOk = (cosineSim(refVec512, vec) > (1-threshold));
           let label = isOk ? labeledName : 'Unknown';
+ // ★ここに追加！
+  console.log("512D類似度:", sim, "ラベル:", label);
           ctx512.strokeStyle = isOk ? '#33b9bb' : '#E94560';
           ctx512.lineWidth = 3;
           ctx512.strokeRect(box.x, box.y, box.width, box.height);
