@@ -429,7 +429,7 @@
         ctx128.clearRect(0, 0, overlay128.width, overlay128.height);
         if (det128) {
           const sim = cosineSim(refVec128, det128.descriptor);
-          const threshold = 0.5;
+          const threshold = 0.4;
           let isOk = (sim > (1-threshold));
           let label = isOk ? labeledName : 'Unknown';
           ctx128.strokeStyle = isOk ? '#33b9bb' : '#E94560';
