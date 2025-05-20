@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>ArcFace 512D ろかぷー1顔認識デモ</title>
+  <title>ArcFace 512D 顔認識デモ</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; background: #f7f7f7; }
     h2 { margin-top: 24px; }
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h2>ArcFace 512D ろかぷー1顔認識デモ</h2>
+  <h2>ArcFace 512D 顔認識デモ</h2>
   <div id="controls">
     <input type="file" id="photoUpload" accept="image/*" />
     <input type="text" id="nameInput" placeholder="名前を入力" />
@@ -32,7 +32,7 @@
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <script type="module">
     // 1. モデルのパス
-    const ARC_ONNX_URL = "./w600k_mbf.onnx"; // リポジトリのmodel/arcface.onnxに置く
+    const ARC_ONNX_URL = "./w600k_mbf.onnx"; // アップロードしたファイル名に合わせて
     const video = document.getElementById('video');
     const overlay = document.getElementById('overlay');
     const ctx = overlay.getContext('2d');
@@ -54,18 +54,15 @@
       statusEl.textContent = '写真と名前を登録してください';
     }
 
-    // 3. ArcFace埋め込み計算
+    // 3. ArcFace埋め込み計算（ここをバグ修正版に）
     async function getArcFaceVec(image) {
-      // 1. 顔検出＋切り抜き（face-apiでやる）
       const det = await faceapi.detectSingleFace(image, new faceapi.TinyFaceDetectorOptions());
       if (!det) return null;
-      // 2. 顔部分だけ112x112にリサイズ
       const box = det.box;
       const faceCanvas = document.createElement('canvas');
       faceCanvas.width = 112; faceCanvas.height = 112;
       const fctx = faceCanvas.getContext('2d');
       fctx.drawImage(image, box.x, box.y, box.width, box.height, 0, 0, 112, 112);
-      // 3. float32配列へ変換
       const imgData = fctx.getImageData(0, 0, 112, 112).data;
       let input = new Float32Array(1 * 3 * 112 * 112);
       for (let y = 0; y < 112; y++) {
@@ -75,11 +72,20 @@
           }
         }
       }
-      // 4. ONNXモデル推論
       const tensor = new ort.Tensor("float32", input, [1, 3, 112, 112]);
       const outputs = await session.run({ data: tensor });
-      let emb = outputs['fc1'] || outputs['embedding'] || Object.values(outputs)[0]; // モデルにより名前違う場合あり
-      // 5. 正規化（単位ベクトル化）
+      // ★出力keyをconsoleで必ず確認
+      console.log("ONNX outputs keys:", Object.keys(outputs));
+      let emb =
+        outputs['fc1'] ||
+        outputs['embedding'] ||
+        outputs['resnet_output'] ||
+        outputs['output'] ||
+        Object.values(outputs)[0];
+      if (!emb || !emb.data) {
+        console.error("ONNX embedding extraction failed. Outputs:", outputs);
+        return null;
+      }
       const norm = Math.sqrt(emb.data.reduce((s,v) => s+v*v, 0));
       const vec = emb.data.map(v => v/norm);
       return vec;
@@ -138,22 +144,18 @@
         const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
         ctx.clearRect(0, 0, overlay.width, overlay.height);
         if (det) {
-          // 顔部分だけ切り抜き＋112x112にリサイズ
           const box = det.box;
           const faceCanvas = document.createElement('canvas');
           faceCanvas.width = 112; faceCanvas.height = 112;
           faceCanvas.getContext('2d').drawImage(video, box.x, box.y, box.width, box.height, 0, 0, 112, 112);
-          // ベクトル計算
           const img = new window.Image();
           img.src = faceCanvas.toDataURL();
           img.onload = async () => {
             const vec = await getArcFaceVec(img);
             if (!vec) return;
-            // 類似度判定
             const sim = cosineSim(referenceVec, vec);
-            const threshold = 0.4; // ArcFaceはコサイン類似度 0.3〜0.5程度を目安
+            const threshold = 0.4;
             let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
-            // 枠表示
             ctx.strokeStyle = (label === 'Unknown') ? 'red' : 'limegreen';
             ctx.lineWidth = 3;
             ctx.strokeRect(box.x, box.y, box.width, box.height);
@@ -162,7 +164,7 @@
             ctx.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
           }
         }
-      }, 400); // 0.4秒ごと
+      }, 400);
     }
 
     // 起動
