@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>128D vs 512D ろかぷー顔認識リアルタイム比較デモ</title>
+  <title>128D vs 512D ArcFace 顔認識リアルタイム比較</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 0; background: #f7f7f7; }
     h2 { margin-top: 24px; }
@@ -11,10 +11,13 @@
     .camrow { display: flex; justify-content: center; }
     .cambox { margin: 0 10px; }
     #status { margin-top: 12px; font-size: 1rem; }
+    #log { margin: 30px auto; width: 80%; background: #fff; border-radius: 8px; padding: 12px; text-align: left; max-height:180px; overflow:auto;}
+    .ok { color: #0a0; font-weight: bold;}
+    .ng { color: #e00; font-weight: bold;}
   </style>
 </head>
 <body>
-  <h2>128D vs 512D ArcFace ろかぷー顔認識リアルタイム比較</h2>
+  <h2>128D vs 512D ArcFace 顔認識リアルタイム比較</h2>
   <div id="controls">
     <input type="file" id="photoUpload" accept="image/*" />
     <input type="text" id="nameInput" placeholder="名前を入力" />
@@ -34,11 +37,11 @@
     </div>
   </div>
   <div id="status">モデル読込中…</div>
+  <div id="log"></div>
   <!-- 必要ライブラリ -->
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <script type="module">
-    // パスは自分のGitHubリポジトリ/model以下に置いたONNX名に合わせる
     const ARC_ONNX_URL = "./w600k_mbf.onnx";
     const video128 = document.getElementById('video128');
     const overlay128 = document.getElementById('overlay128');
@@ -51,16 +54,29 @@
     const nameInput = document.getElementById('nameInput');
     const regBtn = document.getElementById('registerBtn');
     const startBtn = document.getElementById('startBtn');
+    const logDiv = document.getElementById('log');
     let labeledName = null;
     let refVec128 = null;
     let refVec512 = null;
     let session512 = null;
+    let logList = [];
+
+    function addLog(model, result, name) {
+      const now = new Date();
+      const hh = now.getHours().toString().padStart(2, '0');
+      const mm = now.getMinutes().toString().padStart(2, '0');
+      const ss = now.getSeconds().toString().padStart(2, '0');
+      const time = `${hh}:${mm}:${ss}`;
+      const status = result ? `<span class="ok">○認識</span>` : `<span class="ng">×不一致</span>`;
+      logList.unshift(`<b>[${model}]</b> ${status} (${name}) <span style="color:#888">${time}</span>`);
+      logDiv.innerHTML = logList.slice(0, 15).join("<br>");
+    }
 
     // モデル読み込み
     async function loadModels() {
       statusEl.textContent = '128D・顔検出モデル読込中…';
       await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
-await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
       await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
       statusEl.textContent = '512D ArcFaceモデル読込中…';
       session512 = await ort.InferenceSession.create(ARC_ONNX_URL);
@@ -70,7 +86,7 @@ await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@
     // 128D ベクトル計算
     async function getVec128(image) {
       const det = await faceapi.detectSingleFace(image, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-      return det ? det.descriptor : null;
+      return det ? { vec: det.descriptor, box: det.detection.box } : null;
     }
 
     // 512D ベクトル計算（ArcFace）
@@ -95,12 +111,11 @@ await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@
       const feeds = {};
       feeds['input.1'] = tensor;
       const outputs = await session512.run(feeds);
-      // 出力keyを自動判定
       let emb = outputs['embedding'] || outputs['fc1'] || outputs['output'] || Object.values(outputs)[0];
       if (!emb || !emb.data) return null;
       const norm = Math.sqrt(emb.data.reduce((s,v) => s+v*v, 0));
       const vec = emb.data.map(v => v/norm);
-      return vec;
+      return { vec: vec, box: box };
     }
 
     // 登録ボタン
@@ -119,8 +134,8 @@ await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@
         return;
       }
       labeledName = label;
-      refVec128 = v128;
-      refVec512 = v512;
+      refVec128 = v128.vec;
+      refVec512 = v512.vec;
       statusEl.textContent = `「${label}」を登録しました。カメラを開始できます`;
       startBtn.disabled = false;
     });
@@ -171,6 +186,9 @@ await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@
           ctx128.font = '20px sans-serif';
           ctx128.fillStyle = ctx128.strokeStyle;
           ctx128.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
+          addLog("128D", (label !== 'Unknown'), label);
+        } else {
+          addLog("128D", false, "顔検出なし");
         }
 
         // 512D
@@ -185,8 +203,11 @@ await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@
           img.src = faceCanvas.toDataURL();
           img.onload = async () => {
             const v512 = await getVec512(img);
-            if (!v512) return;
-            const sim = cosineSim(refVec512, v512);
+            if (!v512) {
+              addLog("512D", false, "顔検出失敗");
+              return;
+            }
+            const sim = cosineSim(refVec512, v512.vec);
             const threshold = 0.4;
             let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
             ctx512.strokeStyle = (label === 'Unknown') ? 'red' : 'limegreen';
@@ -195,12 +216,14 @@ await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@
             ctx512.font = '20px sans-serif';
             ctx512.fillStyle = ctx512.strokeStyle;
             ctx512.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
+            addLog("512D", (label !== 'Unknown'), label);
           }
+        } else {
+          addLog("512D", false, "顔検出なし");
         }
-      }, 500);
+      }, 600); // 負荷対策で600msに設定
     }
 
-    // 起動
     loadModels();
   </script>
 </body>
