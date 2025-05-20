@@ -55,7 +55,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-bottom: 22px;
+      margin-bottom: 0px;
     }
     #controls {
       display: flex;
@@ -125,6 +125,18 @@
       background: linear-gradient(90deg, #00A0E9 70%, #33b9bb 100%);
       box-shadow: 0 4px 16px #00A0E922;
     }
+    .controls-desc {
+      width: 100%;
+      text-align: center;
+      margin-top: 6px;
+      margin-bottom: 14px;
+      color: #009fb8;
+      font-size: 1.06rem;
+      letter-spacing: 0.03em;
+      font-weight: 600;
+      text-shadow: 0 1px 8px #33b9bb22;
+      font-family: 'Noto Sans JP', 'Meiryo', sans-serif;
+    }
     .camrow {
       display: flex;
       justify-content: center;
@@ -150,7 +162,6 @@
       font-weight: 700;
       letter-spacing: 0.03em;
     }
-    /* ここに position: relative を必ず追加！ */
     .video-wrap {
       position: relative;
       width: 320px;
@@ -220,17 +231,20 @@
   </div>
   <div class="totalsum" id="sumtotal">128D認識OK: 0　NG: 0　|　512D認識OK: 0　NG: 0</div>
   <div id="controls-outer">
-    <div id="controls">
-      <div class="form-group">
-        <input type="file" id="photoUpload" accept="image/*" />
+    <div>
+      <div id="controls">
+        <div class="form-group">
+          <input type="file" id="photoUpload" accept="image/*" />
+        </div>
+        <div class="form-group">
+          <input type="text" id="nameInput" placeholder="名前を入力" />
+        </div>
+        <div class="form-group">
+          <button id="registerBtn">登録</button>
+          <button id="startBtn" disabled>カメラ開始</button>
+        </div>
       </div>
-      <div class="form-group">
-        <input type="text" id="nameInput" placeholder="名前を入力" />
-      </div>
-      <div class="form-group">
-        <button id="registerBtn">登録</button>
-        <button id="startBtn" disabled>カメラ開始</button>
-      </div>
+      <div class="controls-desc">※写真ファイルと名前を登録してカメラ開始を押してください</div>
     </div>
   </div>
   <div class="camrow">
@@ -264,6 +278,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <script type="module">
+    // ※この部分は前回と同じ
     const ARC_ONNX_URL = "./w600k_mbf.onnx";
     const video128 = document.getElementById('video128');
     const overlay128 = document.getElementById('overlay128');
@@ -414,10 +429,9 @@
         ctx128.clearRect(0, 0, overlay128.width, overlay128.height);
         if (det128) {
           const sim = cosineSim(refVec128, det128.descriptor);
-          const threshold = 0.55;
+          const threshold = 0.5;
           let isOk = (sim > (1-threshold));
           let label = isOk ? labeledName : 'Unknown';
-          // NG時は赤、OK時はロカオプ色
           ctx128.strokeStyle = isOk ? '#33b9bb' : '#E94560';
           ctx128.lineWidth = 3;
           const box = det128.detection.box;
