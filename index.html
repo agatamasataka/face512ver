@@ -414,7 +414,7 @@
         ctx128.clearRect(0, 0, overlay128.width, overlay128.height);
         if (det128) {
           const sim = cosineSim(refVec128, det128.descriptor);
-          const threshold = 0.5;
+          const threshold = 0.55;
           let isOk = (sim > (1-threshold));
           let label = isOk ? labeledName : 'Unknown';
           // NG時は赤、OK時はロカオプ色
