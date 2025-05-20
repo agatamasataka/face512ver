@@ -11,62 +11,108 @@
       margin: 0;
       padding: 0;
     }
-    h2 {
-      margin-top: 32px;
-      font-size: 2.2rem;
-      color: #333;
-      font-weight: 700;
-      letter-spacing: 0.05em;
+    /* タイトル中央寄せ・デザイン */
+    .main-title {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      text-align: center;
+      font-size: 2.7rem;
+      font-weight: 900;
+      margin-top: 40px;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      text-shadow: 0 4px 14px #33b9bb22, 0 1px 0 #fff;
     }
+    .rokapu-color {
+      color: #33b9bb;
+      margin: 0 0.15em;
+      font-size: 1.1em;
+      letter-spacing: 0.08em;
+      text-shadow: 0 2px 8px #33b9bb44;
+    }
+    /* 合計カウント中央大型カード */
     .totalsum {
-      margin: 18px auto 18px auto;
-      font-size: 1.3rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 30px auto 24px auto;
+      font-size: 1.5rem;
       font-weight: bold;
       background: #fff;
       color: #26a2a3;
-      border-radius: 16px;
-      box-shadow: 0 4px 16px #33b9bb22;
-      width: 410px;
-      padding: 12px 0 10px 0;
-      letter-spacing: 0.05em;
-      border: 2px solid #33b9bb22;
+      border-radius: 20px;
+      box-shadow: 0 6px 24px #33b9bb22;
+      width: 600px;
+      min-height: 56px;
+      padding: 20px 0 16px 0;
+      letter-spacing: 0.07em;
+      border: 2.5px solid #33b9bb22;
+      font-family: 'Noto Sans JP', 'Meiryo', sans-serif;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    /* コントロール枠（ロカオプ風） */
+    #controls-outer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 22px;
     }
     #controls {
-      margin: 24px 0 16px 0;
-      background: #fff;
-      border-radius: 20px;
-      box-shadow: 0 4px 16px #33b9bb22;
-      padding: 22px 30px 18px 30px;
-      display: inline-block;
-      min-width: 370px;
-      border: 2px solid #33b9bb11;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(90deg, #33b9bb 50%, #00A0E9 100%);
+      border-radius: 24px;
+      box-shadow: 0 6px 24px #33b9bb22;
+      padding: 20px 34px 20px 34px;
+      min-width: 440px;
+      border: 2.2px solid #33b9bb33;
+      gap: 15px;
+    }
+    .form-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     input[type="file"] {
-      margin-bottom: 6px;
+      margin-bottom: 0;
+      border-radius: 13px;
+      border: none;
+      background: #fff;
+      padding: 6px 9px;
+      font-size: 1.05rem;
+      color: #333;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 1px 6px #33b9bb18;
     }
     input[type="text"] {
-      padding: 9px 16px;
-      font-size: 1rem;
-      border: 1.7px solid #b5e2e3;
-      border-radius: 12px;
+      padding: 11px 18px;
+      font-size: 1.12rem;
+      border: 2px solid #fff;
+      border-radius: 13px;
       outline: none;
-      margin-right: 8px;
-      transition: border 0.2s;
-      width: 150px;
+      width: 140px;
       background: #f7fafb;
+      font-family: inherit;
+      box-shadow: 0 2px 8px #33b9bb11;
     }
     input[type="text"]:focus {
-      border-color: #33b9bb;
+      border-color: #26a2a3;
+      background: #f3f7f8;
     }
     button {
-      padding: 8px 20px;
+      padding: 10px 28px;
       margin: 0 7px;
-      font-size: 1rem;
-      background: linear-gradient(90deg, #33b9bb 70%, #00A0E9 100%);
+      font-size: 1.12rem;
+      background: linear-gradient(90deg, #33b9bb 80%, #00A0E9 100%);
       color: #fff;
       font-weight: bold;
       border: none;
-      border-radius: 14px;
+      border-radius: 15px;
       cursor: pointer;
       box-shadow: 0 2px 8px #33b9bb18;
       transition: background 0.2s, box-shadow 0.2s;
@@ -79,43 +125,55 @@
       opacity: 0.7;
     }
     button:hover:not(:disabled) {
-      background: linear-gradient(90deg, #00A0E9 60%, #33b9bb 100%);
-      box-shadow: 0 4px 12px #00A0E922;
+      background: linear-gradient(90deg, #00A0E9 70%, #33b9bb 100%);
+      box-shadow: 0 4px 16px #00A0E922;
     }
+    /* 2カラム枠 */
     .camrow {
       display: flex;
       justify-content: center;
-      gap: 40px;
-      margin-top: 16px;
-      margin-bottom: 16px;
+      gap: 60px;
+      margin-top: 20px;
+      margin-bottom: 24px;
     }
     .cambox {
       background: #fff;
-      border-radius: 22px;
-      box-shadow: 0 4px 16px #33b9bb18;
-      padding: 16px 24px 22px 24px;
-      border: 2px solid #33b9bb11;
-      min-width: 355px;
+      border-radius: 30px;
+      box-shadow: 0 6px 24px #33b9bb1a;
+      padding: 22px 26px 20px 26px;
+      border: 2.5px solid #33b9bb14;
+      min-width: 370px;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
     .cambox h3 {
-      font-size: 1.2rem;
+      font-size: 1.21rem;
       color: #26a2a3;
       margin-bottom: 12px;
       font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .video-wrap {
+      position: relative;
+      width: 320px;
+      height: 240px;
     }
     video, canvas {
-      border-radius: 12px;
+      border-radius: 13px;
       background: #f6fcfd;
-      margin-bottom: 6px;
-      border: 1.5px solid #b5e2e3;
+      border: 2.1px solid #b5e2e3;
+      position: absolute;
+      top: 0; left: 0;
+      width: 320px; height: 240px;
+      display: block;
     }
+    video { z-index: 1; }
+    canvas { z-index: 2; pointer-events: none; }
     .counters {
       margin: 12px 0 0 0;
-      font-size: 1.09em;
-      font-weight: 600;
+      font-size: 1.14em;
+      font-weight: 700;
       color: #333;
       letter-spacing: 0.03em;
     }
@@ -125,42 +183,55 @@
       margin-top: 14px;
       width: 96%;
       background: #f7fafb;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px #33b9bb13;
-      padding: 10px 12px 8px 12px;
+      border-radius: 11px;
+      box-shadow: 0 2px 8px #33b9bb13;
+      padding: 12px 12px 10px 14px;
       text-align: left;
       max-height: 155px;
       overflow-y: auto;
-      font-size: 0.99rem;
-      border: 1.5px solid #b5e2e3;
+      font-size: 1.01rem;
+      border: 1.7px solid #b5e2e3;
       color: #444;
       min-height: 36px;
     }
     #status {
-      margin-top: 20px;
-      font-size: 1.08rem;
+      margin-top: 24px;
+      font-size: 1.12rem;
       color: #00A0E9;
       font-weight: 600;
       letter-spacing: 0.05em;
+      text-align: center;
     }
     .ok { color: #33b9bb; font-weight: bold;}
     .ng { color: #E94560; font-weight: bold;}
   </style>
 </head>
 <body>
-  <h2>128D vs 512D ArcFace ろかぷー顔認識リアルタイム比較</h2>
+  <div class="main-title">
+    128D vs 512D ArcFace <span class="rokapu-color">ろかぷー顔認識</span>リアルタイム比較
+  </div>
   <div class="totalsum" id="sumtotal">128D認識OK: 0　NG: 0　|　512D認識OK: 0　NG: 0</div>
-  <div id="controls">
-    <input type="file" id="photoUpload" accept="image/*" />
-    <input type="text" id="nameInput" placeholder="名前を入力" />
-    <button id="registerBtn">登録</button>
-    <button id="startBtn" disabled>カメラ開始</button>
+  <div id="controls-outer">
+    <div id="controls">
+      <div class="form-group">
+        <input type="file" id="photoUpload" accept="image/*" />
+      </div>
+      <div class="form-group">
+        <input type="text" id="nameInput" placeholder="名前を入力" />
+      </div>
+      <div class="form-group">
+        <button id="registerBtn">登録</button>
+        <button id="startBtn" disabled>カメラ開始</button>
+      </div>
+    </div>
   </div>
   <div class="camrow">
     <div class="cambox">
       <h3>128D（MITモデル／face-api.js標準）</h3>
-      <video id="video128" width="320" height="240" autoplay muted></video>
-      <canvas id="overlay128" width="320" height="240"></canvas>
+      <div class="video-wrap">
+        <video id="video128" width="320" height="240" autoplay muted></video>
+        <canvas id="overlay128" width="320" height="240"></canvas>
+      </div>
       <div class="counters">
         <span class="ok">OK: <span id="cntok128">0</span></span>　
         <span class="ng">NG: <span id="cntng128">0</span></span>
@@ -169,8 +240,10 @@
     </div>
     <div class="cambox">
       <h3>512D（ArcFace ONNX）</h3>
-      <video id="video512" width="320" height="240" autoplay muted></video>
-      <canvas id="overlay512" width="320" height="240"></canvas>
+      <div class="video-wrap">
+        <video id="video512" width="320" height="240" autoplay muted></video>
+        <canvas id="overlay512" width="320" height="240"></canvas>
+      </div>
       <div class="counters">
         <span class="ok">OK: <span id="cntok512">0</span></span>　
         <span class="ng">NG: <span id="cntng512">0</span></span>
@@ -200,14 +273,12 @@
     const cntok512 = document.getElementById('cntok512');
     const cntng512 = document.getElementById('cntng512');
     const sumtotal = document.getElementById('sumtotal');
-    // 各モデル用ログ領域
     const logDiv128 = document.getElementById('log128');
     const logDiv512 = document.getElementById('log512');
     let labeledName = null;
     let refVec128 = null;
     let refVec512 = null;
     let session512 = null;
-    // ログは分割（128D・512D別々に10件ずつ保持）
     let logList128 = [];
     let logList512 = [];
     let ok128 = 0, ng128 = 0, ok512 = 0, ng512 = 0;
@@ -335,7 +406,7 @@
         ctx128.clearRect(0, 0, overlay128.width, overlay128.height);
         if (det128) {
           const sim = cosineSim(refVec128, det128.descriptor);
-          const threshold = 0.45;
+          const threshold = 0.5; // マスク用にやや甘め
           let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
           ctx128.strokeStyle = (label === 'Unknown') ? '#E94560' : '#33b9bb';
           ctx128.lineWidth = 3;
@@ -353,7 +424,6 @@
         ctx512.clearRect(0, 0, overlay512.width, overlay512.height);
         const det512 = await faceapi.detectSingleFace(video512, new faceapi.TinyFaceDetectorOptions());
         if (det512) {
-          // 顔画像をリサイズしてベクトル取得
           const box = det512.box;
           const faceCanvas = document.createElement('canvas');
           faceCanvas.width = 112; faceCanvas.height = 112;
@@ -379,8 +449,8 @@
           }
           const norm = Math.sqrt(emb.data.reduce((s,v) => s+v*v, 0));
           const vec = emb.data.map(v => v/norm);
+          const threshold = 0.5;
           const sim = cosineSim(refVec512, vec);
-          const threshold = 0.45;
           let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
           ctx512.strokeStyle = (label === 'Unknown') ? '#E94560' : '#33b9bb';
           ctx512.lineWidth = 3;
