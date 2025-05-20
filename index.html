@@ -10,14 +10,18 @@
     input, button { padding: 6px 10px; margin: 4px; }
     .camrow { display: flex; justify-content: center; }
     .cambox { margin: 0 10px; }
+    .counters { margin: 10px 0 0 0; font-size: 1.2em; }
     #status { margin-top: 12px; font-size: 1rem; }
     #log { margin: 30px auto; width: 80%; background: #fff; border-radius: 8px; padding: 12px; text-align: left; max-height:180px; overflow:auto;}
     .ok { color: #0a0; font-weight: bold;}
     .ng { color: #e00; font-weight: bold;}
+    .totalsum { margin:10px 0 20px 0; font-size:1.4em; font-weight:bold;}
   </style>
 </head>
 <body>
   <h2>128D vs 512D ArcFace 顔認識リアルタイム比較</h2>
+  <!-- 合計表示 -->
+  <div class="totalsum" id="sumtotal">128D認識OK: 0　NG: 0　|　512D認識OK: 0　NG: 0</div>
   <div id="controls">
     <input type="file" id="photoUpload" accept="image/*" />
     <input type="text" id="nameInput" placeholder="名前を入力" />
@@ -29,11 +33,20 @@
       <h3>128D（MITモデル／face-api.js標準）</h3>
       <video id="video128" width="320" height="240" autoplay muted></video>
       <canvas id="overlay128" width="320" height="240"></canvas>
+      <!-- 各モデル下の認識数カウント -->
+      <div class="counters">
+        OK: <span id="cntok128">0</span>　
+        NG: <span id="cntng128">0</span>
+      </div>
     </div>
     <div class="cambox">
       <h3>512D（ArcFace ONNX）</h3>
       <video id="video512" width="320" height="240" autoplay muted></video>
       <canvas id="overlay512" width="320" height="240"></canvas>
+      <div class="counters">
+        OK: <span id="cntok512">0</span>　
+        NG: <span id="cntng512">0</span>
+      </div>
     </div>
   </div>
   <div id="status">モデル読込中…</div>
@@ -55,11 +68,17 @@
     const regBtn = document.getElementById('registerBtn');
     const startBtn = document.getElementById('startBtn');
     const logDiv = document.getElementById('log');
+    const cntok128 = document.getElementById('cntok128');
+    const cntng128 = document.getElementById('cntng128');
+    const cntok512 = document.getElementById('cntok512');
+    const cntng512 = document.getElementById('cntng512');
+    const sumtotal = document.getElementById('sumtotal');
     let labeledName = null;
     let refVec128 = null;
     let refVec512 = null;
     let session512 = null;
     let logList = [];
+    let ok128 = 0, ng128 = 0, ok512 = 0, ng512 = 0;
 
     function addLog(model, result, name) {
       const now = new Date();
@@ -70,9 +89,21 @@
       const status = result ? `<span class="ok">○認識</span>` : `<span class="ng">×不一致</span>`;
       logList.unshift(`<b>[${model}]</b> ${status} (${name}) <span style="color:#888">${time}</span>`);
       logDiv.innerHTML = logList.slice(0, 15).join("<br>");
+      // カウント反映
+      if(model=="128D"){
+        if(result) ok128++; else ng128++;
+        cntok128.textContent = ok128;
+        cntng128.textContent = ng128;
+      }
+      if(model=="512D"){
+        if(result) ok512++; else ng512++;
+        cntok512.textContent = ok512;
+        cntng512.textContent = ng512;
+      }
+      // 合計カウントを一番上に反映
+      sumtotal.textContent = `128D認識OK: ${ok128}　NG: ${ng128}　|　512D認識OK: ${ok512}　NG: ${ng512}`;
     }
 
-    // モデル読み込み
     async function loadModels() {
       statusEl.textContent = '128D・顔検出モデル読込中…';
       await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
@@ -82,14 +113,10 @@
       session512 = await ort.InferenceSession.create(ARC_ONNX_URL);
       statusEl.textContent = '写真と名前を登録してください';
     }
-
-    // 128D ベクトル計算
     async function getVec128(image) {
       const det = await faceapi.detectSingleFace(image, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
       return det ? { vec: det.descriptor, box: det.detection.box } : null;
     }
-
-    // 512D ベクトル計算（ArcFace）
     async function getVec512(image) {
       const det = await faceapi.detectSingleFace(image, new faceapi.TinyFaceDetectorOptions());
       if (!det) return null;
@@ -117,8 +144,6 @@
       const vec = emb.data.map(v => v/norm);
       return { vec: vec, box: box };
     }
-
-    // 登録ボタン
     regBtn.addEventListener('click', async () => {
       const file = photoInput.files[0];
       const label = nameInput.value.trim();
@@ -136,11 +161,14 @@
       labeledName = label;
       refVec128 = v128.vec;
       refVec512 = v512.vec;
+      ok128 = ng128 = ok512 = ng512 = 0;
+      cntok128.textContent = 0; cntng128.textContent = 0; cntok512.textContent = 0; cntng512.textContent = 0;
+      sumtotal.textContent = `128D認識OK: 0　NG: 0　|　512D認識OK: 0　NG: 0`;
+      logList = [];
+      logDiv.innerHTML = "";
       statusEl.textContent = `「${label}」を登録しました。カメラを開始できます`;
       startBtn.disabled = false;
     });
-
-    // カメラ開始
     startBtn.addEventListener('click', async () => {
       if (!refVec128 || !refVec512) {
         alert('先に写真と名前を登録してください');
@@ -157,20 +185,15 @@
         runRecognition();
       };
     });
-
-    // コサイン類似度
     function cosineSim(a, b) {
       let s = 0;
       for(let i=0;i<a.length;i++) s += a[i]*b[i];
       return s;
     }
-
-    // 認識ループ
     async function runRecognition() {
       statusEl.textContent = '認識待機中…';
       faceapi.matchDimensions(overlay128, { width: 320, height: 240 });
       faceapi.matchDimensions(overlay512, { width: 320, height: 240 });
-
       setInterval(async () => {
         // 128D
         const det128 = await faceapi.detectSingleFace(video128, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
@@ -192,38 +215,51 @@
         }
 
         // 512D
-        const det512 = await faceapi.detectSingleFace(video512, new faceapi.TinyFaceDetectorOptions());
         ctx512.clearRect(0, 0, overlay512.width, overlay512.height);
+        const det512 = await faceapi.detectSingleFace(video512, new faceapi.TinyFaceDetectorOptions());
         if (det512) {
+          // 顔画像をリサイズしてベクトル取得
           const box = det512.box;
           const faceCanvas = document.createElement('canvas');
           faceCanvas.width = 112; faceCanvas.height = 112;
-          faceCanvas.getContext('2d').drawImage(video512, box.x, box.y, box.width, box.height, 0, 0, 112, 112);
-          const img = new window.Image();
-          img.src = faceCanvas.toDataURL();
-          img.onload = async () => {
-            const v512 = await getVec512(img);
-            if (!v512) {
-              addLog("512D", false, "顔検出失敗");
-              return;
+          const fctx = faceCanvas.getContext('2d');
+          fctx.drawImage(video512, box.x, box.y, box.width, box.height, 0, 0, 112, 112);
+          const imgData = fctx.getImageData(0, 0, 112, 112).data;
+          let input = new Float32Array(1 * 3 * 112 * 112);
+          for (let y = 0; y < 112; y++) {
+            for (let x = 0; x < 112; x++) {
+              for (let c = 0; c < 3; c++) {
+                input[y * 112 * 3 + x * 3 + c] = imgData[(y * 112 + x) * 4 + c] / 255.0;
+              }
             }
-            const sim = cosineSim(refVec512, v512.vec);
-            const threshold = 0.4;
-            let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
-            ctx512.strokeStyle = (label === 'Unknown') ? 'red' : 'limegreen';
-            ctx512.lineWidth = 3;
-            ctx512.strokeRect(box.x, box.y, box.width, box.height);
-            ctx512.font = '20px sans-serif';
-            ctx512.fillStyle = ctx512.strokeStyle;
-            ctx512.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
-            addLog("512D", (label !== 'Unknown'), label);
           }
+          const tensor = new ort.Tensor("float32", input, [1, 3, 112, 112]);
+          const feeds = {};
+          feeds['input.1'] = tensor;
+          const outputs = await session512.run(feeds);
+          let emb = outputs['embedding'] || outputs['fc1'] || outputs['output'] || Object.values(outputs)[0];
+          if (!emb || !emb.data) {
+            addLog("512D", false, "ベクトル取得失敗");
+            return;
+          }
+          const norm = Math.sqrt(emb.data.reduce((s,v) => s+v*v, 0));
+          const vec = emb.data.map(v => v/norm);
+          const sim = cosineSim(refVec512, vec);
+          const threshold = 0.45;
+          let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
+          ctx512.strokeStyle = (label === 'Unknown') ? 'red' : 'limegreen';
+          ctx512.lineWidth = 3;
+          ctx512.strokeRect(box.x, box.y, box.width, box.height);
+          ctx512.font = '20px sans-serif';
+          ctx512.fillStyle = ctx512.strokeStyle;
+          ctx512.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
+          addLog("512D", (label !== 'Unknown'), label);
         } else {
           addLog("512D", false, "顔検出なし");
         }
-      }, 600); // 負荷対策で600msに設定
+      }, 1200); // 1.2秒ごと認識
     }
-
+    // 最初にモデル読み込み
     loadModels();
   </script>
 </body>
