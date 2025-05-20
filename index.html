@@ -11,7 +11,6 @@
       margin: 0;
       padding: 0;
     }
-    /* タイトル中央寄せ・デザイン */
     .main-title {
       display: flex;
       justify-content: center;
@@ -31,7 +30,6 @@
       letter-spacing: 0.08em;
       text-shadow: 0 2px 8px #33b9bb44;
     }
-    /* 合計カウント中央大型カード */
     .totalsum {
       display: flex;
       justify-content: center;
@@ -53,7 +51,6 @@
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
-    /* コントロール枠（ロカオプ風） */
     #controls-outer {
       display: flex;
       justify-content: center;
@@ -128,7 +125,6 @@
       background: linear-gradient(90deg, #00A0E9 70%, #33b9bb 100%);
       box-shadow: 0 4px 16px #00A0E922;
     }
-    /* 2カラム枠 */
     .camrow {
       display: flex;
       justify-content: center;
@@ -154,22 +150,34 @@
       font-weight: 700;
       letter-spacing: 0.03em;
     }
+    /* ここに position: relative を必ず追加！ */
     .video-wrap {
       position: relative;
       width: 320px;
       height: 240px;
+      margin-bottom: 6px;
     }
-    video, canvas {
+    video {
       border-radius: 13px;
       background: #f6fcfd;
       border: 2.1px solid #b5e2e3;
-      position: absolute;
-      top: 0; left: 0;
-      width: 320px; height: 240px;
+      width: 320px;
+      height: 240px;
       display: block;
+      position: absolute;
+      top: 0; left: 0; z-index: 1;
+      object-fit: cover;
     }
-    video { z-index: 1; }
-    canvas { z-index: 2; pointer-events: none; }
+    canvas {
+      border-radius: 13px;
+      width: 320px;
+      height: 240px;
+      display: block;
+      position: absolute;
+      top: 0; left: 0; z-index: 2;
+      pointer-events: none;
+      background: transparent;
+    }
     .counters {
       margin: 12px 0 0 0;
       font-size: 1.14em;
@@ -406,16 +414,18 @@
         ctx128.clearRect(0, 0, overlay128.width, overlay128.height);
         if (det128) {
           const sim = cosineSim(refVec128, det128.descriptor);
-          const threshold = 0.5; // マスク用にやや甘め
-          let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
-          ctx128.strokeStyle = (label === 'Unknown') ? '#E94560' : '#33b9bb';
+          const threshold = 0.5;
+          let isOk = (sim > (1-threshold));
+          let label = isOk ? labeledName : 'Unknown';
+          // NG時は赤、OK時はロカオプ色
+          ctx128.strokeStyle = isOk ? '#33b9bb' : '#E94560';
           ctx128.lineWidth = 3;
           const box = det128.detection.box;
           ctx128.strokeRect(box.x, box.y, box.width, box.height);
           ctx128.font = '20px Noto Sans JP, sans-serif';
           ctx128.fillStyle = ctx128.strokeStyle;
           ctx128.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
-          addLog("128D", (label !== 'Unknown'), label);
+          addLog("128D", isOk, label);
         } else {
           addLog("128D", false, "顔検出なし");
         }
@@ -450,15 +460,15 @@
           const norm = Math.sqrt(emb.data.reduce((s,v) => s+v*v, 0));
           const vec = emb.data.map(v => v/norm);
           const threshold = 0.5;
-          const sim = cosineSim(refVec512, vec);
-          let label = (sim > (1-threshold)) ? labeledName : 'Unknown';
-          ctx512.strokeStyle = (label === 'Unknown') ? '#E94560' : '#33b9bb';
+          let isOk = (cosineSim(refVec512, vec) > (1-threshold));
+          let label = isOk ? labeledName : 'Unknown';
+          ctx512.strokeStyle = isOk ? '#33b9bb' : '#E94560';
           ctx512.lineWidth = 3;
           ctx512.strokeRect(box.x, box.y, box.width, box.height);
           ctx512.font = '20px Noto Sans JP, sans-serif';
           ctx512.fillStyle = ctx512.strokeStyle;
           ctx512.fillText(label, box.x, box.y > 24 ? box.y - 6 : box.y + 24);
-          addLog("512D", (label !== 'Unknown'), label);
+          addLog("512D", isOk, label);
         } else {
           addLog("512D", false, "顔検出なし");
         }
